@@ -1,2 +1,2 @@
 # AirDrop-Projects
-All project who are gong to announce airdrop
+All project which are gong to announce airdrop
