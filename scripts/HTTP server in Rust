@@ -1,0 +1,99 @@
+# Writing an HTTP server in Rust can be done using several libraries, but the most popular and beginner-friendly approach is to use the hyper or axum library. I'll explain how to write a simple HTTP server using hyper, which is low-level but powerful.
+
+
+
+1. Setting Up the Project
+createing a new Rust project:
+
+cargo new rust-http-server
+cd rust-http-server
+
+Adding the hyper crate to your Cargo.toml:
+
+[dependencies]
+
+hyper = "0.14"
+tokio = { version = "1", features = ["full"] }
+
+
+
+2. Writing the Server Code
+Here’s a simple HTTP server example:
+
+main.rs
+
+use hyper::{Body, Request, Response, Server};
+use hyper::service::{make_service_fn, service_fn};
+use std::convert::Infallible;
+
+#[tokio::main]
+async fn main() {
+    // Define the address the server will run on
+    let addr = ([127, 0, 0, 1], 3000).into();
+
+    // Define a service to handle incoming requests
+    let make_svc = make_service_fn(|_conn| {
+        async {
+            Ok::<_, Infallible>(service_fn(handle_request))
+        }
+    });
+
+    // Create the server
+    let server = Server::bind(&addr).serve(make_svc);
+
+    println!("Server running on http://{}", addr);
+
+    // Run the server and gracefully handle errors
+    if let Err(e) = server.await {
+        eprintln!("Server error: {}", e);
+    }
+}
+
+// Define the request handler
+async fn handle_request(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    let response = Response::new(Body::from("Hello, World!"));
+    Ok(response)
+}
+
+
+
+3. Explanation
+hyper: The library provides primitives to build an HTTP server or client.
+tokio: A runtime used for asynchronous operations.
+Server::bind: Specifies the address and port for the server.
+make_service_fn: Creates a service for handling connections.
+service_fn: Wraps the actual request handler (handle_request).
+handle_request: This function processes each HTTP request and returns a response.
+
+
+
+4. Running the Server
+Run the server using:
+
+cargo run
+
+Visit http://127.0.0.1:3000 in your browser. You should see the message:
+
+Hello, World!
+
+
+
+5. Enhancements
+Routing: You can add custom routing logic by inspecting the Request object.
+
+JSON Responses: Use the serde crate for handling JSON:
+
+toml
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+Example:
+
+rust
+Copy code
+async fn handle_request(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    let json = serde_json::json!({ "message": "Hello, World!" });
+    let response = Response::new(Body::from(json.to_string()));
+    Ok(response)
+}
+Error Handling: Use meaningful HTTP status codes like 400, 404, or 500.
