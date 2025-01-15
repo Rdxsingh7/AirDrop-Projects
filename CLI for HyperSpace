@@ -239,3 +239,107 @@ For help with issues please make sure to attach the most recent few log files. T
 ## Support
 
 Feel free to open an issue here in the GitHub if you run into any issues or think the documentation can be improved.
+
+
+
+
+
+
+
+
+
+
+The CLI uses the popular clap crate for argument parsing and the reqwest crate for making HTTP requests to the RPC.
+
+
+
+use clap::{App, Arg, SubCommand};
+use reqwest::Client;
+use serde_json::{json, Value};
+use std::error::Error;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    // Define the CLI structure
+    let matches = App::new("Infernet CLI")
+        .version("1.0")
+        .author("Your Name <youremail@example.com>")
+        .about("CLI to interact with an RPC endpoint")
+        .arg(
+            Arg::with_name("rpc")
+                .short("r")
+                .long("rpc")
+                .value_name("RPC_URL")
+                .help("Sets the RPC URL")
+                .takes_value(true)
+                .required(true),
+        )
+        .subcommand(
+            SubCommand::with_name("call")
+                .about("Makes an RPC call")
+                .arg(
+                    Arg::with_name("method")
+                        .short("m")
+                        .long("method")
+                        .value_name("METHOD_NAME")
+                        .help("Specifies the RPC method to call")
+                        .takes_value(true)
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("params")
+                        .short("p")
+                        .long("params")
+                        .value_name("PARAMS")
+                        .help("JSON string of method parameters")
+                        .takes_value(true)
+                        .required(false),
+                ),
+        )
+        .get_matches();
+
+    // Get the RPC URL from the arguments
+    let rpc_url = matches.value_of("rpc").unwrap();
+
+    // Match the subcommand
+    if let Some(matches) = matches.subcommand_matches("call") {
+        let method = matches.value_of("method").unwrap();
+        let params: Value = matches
+            .value_of("params")
+            .map(|p| serde_json::from_str(p).unwrap_or(json!([])))
+            .unwrap_or(json!([]));
+
+        // Make the RPC call
+        let result = rpc_call(rpc_url, method, params).await?;
+        println!("RPC Response: {}", result);
+    } else {
+        println!("No subcommand provided. Use --help for more information.");
+    }
+
+    Ok(())
+}
+
+// Function to make an RPC call
+async fn rpc_call(rpc_url: &str, method: &str, params: Value) -> Result<Value, Box<dyn Error>> {
+    let client = Client::new();
+    let payload = json!({
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+        "id": 1
+    });
+
+    let response = client
+        .post(rpc_url)
+        .json(&payload)
+        .send()
+        .await?
+        .json::<Value>()
+        .await?;
+
+    if let Some(error) = response.get("error") {
+        Err(format!("RPC Error: {}", error).into())
+    } else {
+        Ok(response.get("result").cloned().unwrap_or(json!(null)))
+    }
+}
