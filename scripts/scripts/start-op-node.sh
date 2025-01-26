@@ -32,3 +32,5 @@ exec op-node \
   --p2p.listen.tcp=9222 \
   --p2p.listen.udp=9222 \
   $EXTENDED_ARG $@
+
+some new alteration to this script
